@@ -1,14 +1,14 @@
 package modelo;
 
 public class Producto {
-    // 1. ATRIBUTOS: Privados por el principio de Encapsulamiento.
+    // Atributos privados (Encapsulamiento)
     private int id;
     private String nombre;
     private String categoria; 
     private double precio;
     private int cantidad;
 
-    // 2. CONSTRUCTOR: El método que "fabrica" el objeto cuando lo necesitamos.
+    // Constructor de productos
     public Producto(int id, String nombre, String categoria, double precio, int cantidad) {
         this.id = id;
         this.nombre = nombre;
@@ -17,13 +17,14 @@ public class Producto {
         this.cantidad = cantidad;
     }
 
-    // 3. GETTERS: Métodos públicos para poder "leer" los datos privados desde otras pantallas.
+    // Getters
     public int getId() { return id; }
     public String getNombre() { return nombre; }
     public String getCategoria() { return categoria; }
     public double getPrecio() { return precio; }
     public int getCantidad() { return cantidad; }
 
+    // Setters
     public void setId(int id) {
         this.id = id;
     }
