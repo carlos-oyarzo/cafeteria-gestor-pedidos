@@ -31,7 +31,7 @@ public class PantallaVentas extends javax.swing.JFrame {
         this.setTitle(nombreMesa); // Le dejamos solo el nombre limpio (Ej: "Mesa 1")
         this.botonMesaActual.setBackground(java.awt.Color.RED); 
         
-        // Se llama al lector al abrir ventana
+        // ¡Llamamos al lector apenas se abre la ventana!
         cargarPedidoMesa(nombreMesa);
  }
     
@@ -39,7 +39,7 @@ public class PantallaVentas extends javax.swing.JFrame {
         jComboBox1.removeAllItems(); // Borramos los ítems por defecto
         
         ControladorInventario control = new ControladorInventario();
-        ArrayList<Producto> lista = control.obtenerTodosLosProductos(); // Traemos los datos de DDBB
+        ArrayList<Producto> lista = control.obtenerTodosLosProductos(); // Traemos los datos de MySQL
         
         for (Producto p : lista) {
             jComboBox1.addItem(p.getNombre()); // Metemos los nombres al desplegable
@@ -189,7 +189,7 @@ public class PantallaVentas extends javax.swing.JFrame {
         try {
             int cantidadNueva = Integer.parseInt(cantidadTexto); 
 
-            // Obtenemos el precio del producto consultando el inventario
+            // 1. Buscamos el precio en el inventario
             controlador.ControladorInventario control = new controlador.ControladorInventario();
             java.util.ArrayList<modelo.Producto> lista = control.obtenerTodosLosProductos();
             double precioUnitario = 0;
@@ -200,13 +200,13 @@ public class PantallaVentas extends javax.swing.JFrame {
                 }
             }
 
-            // El título de la ventana contiene el nombre de la mesa (ej: "Mesa 1")
-            String nombreMesa = this.getTitle();
+            // 2. ¿En qué mesa estamos parados?
+            String nombreMesa = this.getTitle(); // Quedó configurado como "Mesa 1", "Mesa 2", etc.
 
             conexion.ConexionDB con = new conexion.ConexionDB();
             java.sql.Connection conexion = con.establecerConexion();
 
-            // Verificamos si este producto ya existe en el pedido de esta mesa
+            // 3. Verificamos si ese producto ya estaba anotado en la libreta de esta mesa
             String sqlCheck = "SELECT cantidad FROM pedidos_temporales WHERE mesa = ? AND producto = ?";
             java.sql.PreparedStatement pstCheck = conexion.prepareStatement(sqlCheck);
             pstCheck.setString(1, nombreMesa);
@@ -214,7 +214,7 @@ public class PantallaVentas extends javax.swing.JFrame {
             java.sql.ResultSet rs = pstCheck.executeQuery();
 
             if (rs.next()) {
-                // El producto ya estaba en el pedido: acumulamos la cantidad
+                // Si ya estaba, sumamos la cantidad vieja con la nueva
                 int cantidadActual = rs.getInt("cantidad");
                 int cantidadTotal = cantidadActual + cantidadNueva;
                 double nuevoSubtotal = precioUnitario * cantidadTotal;
@@ -228,7 +228,7 @@ public class PantallaVentas extends javax.swing.JFrame {
                 pstUpdate.executeUpdate();
                 pstUpdate.close();
             } else {
-                // Producto nuevo en esta mesa: lo insertamos por primera vez
+                // Si es un producto nuevo para esta mesa, lo anotamos por primera vez
                 double subtotal = precioUnitario * cantidadNueva;
                 String sqlInsert = "INSERT INTO pedidos_temporales (mesa, producto, precio, cantidad, subtotal) VALUES (?, ?, ?, ?, ?)";
                 java.sql.PreparedStatement pstInsert = conexion.prepareStatement(sqlInsert);
@@ -242,8 +242,9 @@ public class PantallaVentas extends javax.swing.JFrame {
             }
 
             pstCheck.close();
+            // Recuerda: NO hay conexion.close() aquí para cuidar a la cocina
 
-            // Refrescamos la tabla para reflejar el estado actual del pedido
+            // 4. ¡MAGIA! Recargamos la tabla visual para que muestre lo que guardamos
             cargarPedidoMesa(nombreMesa);
 
             jTextField1.setText("");
@@ -255,7 +256,7 @@ public class PantallaVentas extends javax.swing.JFrame {
     }//GEN-LAST:event_jButton2ActionPerformed
 
     private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
-        // Validamos que haya una fila seleccionada en la tabla
+        // 1. Verificamos que hayas seleccionado un producto
         int filaSeleccionada = jTable1.getSelectedRow();
         if (filaSeleccionada == -1) {
             javax.swing.JOptionPane.showMessageDialog(this, "Por favor, selecciona un producto de la factura haciendo clic en la tabla.");
@@ -275,7 +276,7 @@ public class PantallaVentas extends javax.swing.JFrame {
                  return;
             }
 
-            // Leemos el producto y precio desde la fila seleccionada en la tabla
+            // 2. Tomamos los datos de la fila seleccionada
             javax.swing.table.DefaultTableModel modeloTabla = (javax.swing.table.DefaultTableModel) jTable1.getModel();
             String productoSeleccionado = modeloTabla.getValueAt(filaSeleccionada, 0).toString();
             double precioUnitario = Double.parseDouble(modeloTabla.getValueAt(filaSeleccionada, 1).toString());
@@ -283,7 +284,7 @@ public class PantallaVentas extends javax.swing.JFrame {
             double nuevoSubtotal = precioUnitario * nuevaCantidad;
             String nombreMesa = this.getTitle();
 
-            // Actualizamos la cantidad y subtotal en la base de datos
+            // 3. ✨ MAGIA: Actualizamos la libreta en la Base de Datos ✨
             conexion.ConexionDB con = new conexion.ConexionDB();
             java.sql.Connection conexion = con.establecerConexion();
             String sqlUpdate = "UPDATE pedidos_temporales SET cantidad = ?, subtotal = ? WHERE mesa = ? AND producto = ?";
@@ -294,11 +295,12 @@ public class PantallaVentas extends javax.swing.JFrame {
             pstUpdate.setString(4, productoSeleccionado);
             pstUpdate.executeUpdate();
             pstUpdate.close();
+            // ¡Sin cerrar la conexión general para no pelear con la cocina!
 
-
-            // Recargamos la tabla para mostrar el cambio
+            // 4. Recargamos la tabla visual para ver el cambio instantáneo
             cargarPedidoMesa(nombreMesa);
 
+            // Limpiamos la cajita
             jTextField1.setText("");
             jTextField1.requestFocus();
 
@@ -316,13 +318,13 @@ public class PantallaVentas extends javax.swing.JFrame {
             return;
         }
 
-        // Obtenemos el nombre del producto a eliminar desde la tabla
+        // 1. Tomamos el nombre del producto que vamos a borrar
         javax.swing.table.DefaultTableModel modeloTabla = (javax.swing.table.DefaultTableModel) jTable1.getModel();
         String productoSeleccionado = modeloTabla.getValueAt(filaSeleccionada, 0).toString();
         String nombreMesa = this.getTitle();
 
         try {
-            // Eliminamos el producto del pedido temporal de esta mesa
+            // 2. ✨ MAGIA: Borramos ese producto específico de la libreta ✨
             conexion.ConexionDB con = new conexion.ConexionDB();
             java.sql.Connection conexion = con.establecerConexion();
             String sqlDelete = "DELETE FROM pedidos_temporales WHERE mesa = ? AND producto = ?";
@@ -332,7 +334,7 @@ public class PantallaVentas extends javax.swing.JFrame {
             pstDelete.executeUpdate();
             pstDelete.close();
 
-            // El total se recalcula automáticamente al recargar
+            // 3. Recargamos la tabla visual (y el total se recalcula solito)
             cargarPedidoMesa(nombreMesa);
 
         } catch (Exception ex) {
@@ -341,8 +343,7 @@ public class PantallaVentas extends javax.swing.JFrame {
     }//GEN-LAST:event_jButton4ActionPerformed
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
-        
-        // No procesamos si la factura está vacía
+        // 1. Verificamos que la factura no esté vacía
         javax.swing.table.DefaultTableModel modeloTabla = (javax.swing.table.DefaultTableModel) jTable1.getModel();
         if (modeloTabla.getRowCount() == 0) {
             javax.swing.JOptionPane.showMessageDialog(this, "La cuenta está vacía. Agrega productos antes de cobrar.");
@@ -350,12 +351,12 @@ public class PantallaVentas extends javax.swing.JFrame {
         }
 
         try {
-            
+            // 2. Abrimos la puerta a la Base de Datos
             conexion.ConexionDB con = new conexion.ConexionDB();
             java.sql.Connection conexion = con.establecerConexion();
             
-            // Generamos el ID de factura tomando el máximo actual y sumando 1
-            int idFacturaUnico = 1;
+            // --- ✨ LA MAGIA DE LA SECUENCIA (1, 2, 3...) ✨ ---
+            int idFacturaUnico = 1; // Empezamos en 1 por defecto
             try {
                 java.sql.Statement stId = conexion.createStatement();
                 java.sql.ResultSet rsId = stId.executeQuery("SELECT MAX(id_factura) FROM ventas");
@@ -369,39 +370,46 @@ public class PantallaVentas extends javax.swing.JFrame {
                 System.out.println("Error al buscar el último ID: " + e.getMessage());
             }
 
-            // Recorremos cada producto de la factura: descontamos inventario y registramos la venta
+            // 3. Recorremos toda la factura para descontar los productos del inventario
             for (int i = 0; i < modeloTabla.getRowCount(); i++) {
                 String nombreProducto = modeloTabla.getValueAt(i, 0).toString(); // Columna 0: Nombre
                 int cantidadVendida = Integer.parseInt(modeloTabla.getValueAt(i, 2).toString()); // Columna 2: Cantidad
 
-                // Descontamos del inventario
+                // Le decimos a MySQL: "A la cantidad que tienes, réstale la cantidad que acabo de vender"
                 String sql = "UPDATE productos SET cantidad = cantidad - ? WHERE nombre = ?";
                 java.sql.PreparedStatement pst = conexion.prepareStatement(sql);
                 
                 pst.setInt(1, cantidadVendida);
                 pst.setString(2, nombreProducto);
                 
-                pst.executeUpdate();
+                pst.executeUpdate(); // Disparamos la orden
                 
-                // Insertamos el ítem en la tabla de ventas con su factura correspondiente    
-                String sqlVenta = "INSERT INTO ventas (id_factura, producto, cantidad, subtotal, fecha) VALUES (?, ?, ?, ?, NOW())"; 
-                java.sql.PreparedStatement pstVenta = conexion.prepareStatement(sqlVenta);
-                double subtotalFila = Double.parseDouble(modeloTabla.getValueAt(i, 3).toString());
+                // ... (Tú ya tienes el for y la parte del UPDATE de inventario aquí arriba) ...
 
-                pstVenta.setInt(1, idFacturaUnico);
-                pstVenta.setString(2, nombreProducto);
-                pstVenta.setInt(3, cantidadVendida);
-                pstVenta.setDouble(4, subtotalFila);
+                    // --- AQUÍ EMPIEZA LO NUEVO PARA LA TABLA VENTAS ---
+                    String sqlVenta = "INSERT INTO ventas (id_factura, producto, cantidad, subtotal, fecha) VALUES (?, ?, ?, ?, NOW())"; 
+                    java.sql.PreparedStatement pstVenta = conexion.prepareStatement(sqlVenta);
 
-                pstVenta.executeUpdate(); 
-                pstVenta.close();
-                         
-                pst.close();
+                    // Sacamos el subtotal que está en la columna 3 de la fila actual de la tabla
+                    double subtotalFila = Double.parseDouble(modeloTabla.getValueAt(i, 3).toString());
+
+                    pstVenta.setInt(1, idFacturaUnico); // 1. El ID de la factura
+                    pstVenta.setString(2, nombreProducto); // 2. El nombre
+                    pstVenta.setInt(3, cantidadVendida);   // 3. La cantidad
+                    pstVenta.setDouble(4, subtotalFila);    // 4. El subtotal
+
+                    pstVenta.executeUpdate(); 
+                    pstVenta.close();        // Cerramos esta instrucción
+                    
+                                 
+                pst.close(); // Cerramos la instrucción
             }
             
-  
-            // Enviamos una comanda a cocina como registro de la venta cobrada
+            //conexion.close(); // Cerramos la puerta de la base de datos
+            
+            // ---   ENVIAR COMANDA A COCINA ---
             try {
+                // 1. Recopilamos todo lo que pidió el cliente en un solo texto gigante
                 String detallePedido = "";
                 for (int j = 0; j < modeloTabla.getRowCount(); j++) {
                     String cant = modeloTabla.getValueAt(j, 2).toString();
@@ -409,14 +417,13 @@ public class PantallaVentas extends javax.swing.JFrame {
                     detallePedido += cant + "x " + prod + "\n"; // Quedará como "2x Café"
                 }
 
-                // Si el pedido viene de una mesa usamos su nombre; si no, marcamos "Caja Principal"
-                String origenPedido = "Caja Principal";
-                
+                // 2. Averiguamos de dónde viene el pedido
+                String origenPedido = "Caja Principal"; // Por defecto, si compran de pie
                 if (botonMesaActual != null) {
-                    
-                    origenPedido = this.getTitle();
+                    origenPedido = this.getTitle(); // Toma el nombre de la ventana (Ej: "Factura de: Mesa 1")
                 }
 
+                // 3. Lo inyectamos en la nueva base de datos de la cocina
                 String sqlComanda = "INSERT INTO comandas (mesa, detalle, estado) VALUES (?, ?, 'PENDIENTE')";
                 java.sql.PreparedStatement pstComanda = conexion.prepareStatement(sqlComanda);
                 pstComanda.setString(1, origenPedido);
@@ -427,19 +434,21 @@ public class PantallaVentas extends javax.swing.JFrame {
             } catch (Exception e) {
                 System.out.println("Error al enviar comanda a la cocina: " + e.getMessage());
             }
+            // --- FIN DE LA COMANDA ---
+
+            // 4. ¡Celebramos el éxito!
+            javax.swing.JOptionPane.showMessageDialog(this, "¡Venta registrada con éxito! El inventario de Mi Raquelita ha sido actualizado.");
             
-            javax.swing.JOptionPane.showMessageDialog(this, "Registrado con éxito, inventario actualizado.");
-            
-            // Generamos el ticket en PDF y lo abrimos automáticamente
+            // --- INICIO CÓDIGO DEL TICKET EN PDF ---
             try {
-                // Crea el documento PDF
+                // 1. Creamos el documento PDF
                 com.itextpdf.text.Document documento = new com.itextpdf.text.Document();
                 String nombreArchivo = "Ticket_" + idFacturaUnico + ".pdf";
                 com.itextpdf.text.pdf.PdfWriter.getInstance(documento, new java.io.FileOutputStream(nombreArchivo));
 
                 documento.open();
 
-                // Dibuja el encabezado del ticket
+                // 2. Dibujamos el encabezado del ticket
                 documento.add(new com.itextpdf.text.Paragraph("========================================"));
                 documento.add(new com.itextpdf.text.Paragraph("            MI RAQUELITA CAFÉ           "));
                 documento.add(new com.itextpdf.text.Paragraph("========================================"));
@@ -451,7 +460,7 @@ public class PantallaVentas extends javax.swing.JFrame {
 
                 double totalTicket = 0;
                 
-                // Recorre la tabla del pedido
+                // 3. Recorremos la tabla para anotar lo que compró
                 for (int i = 0; i < modeloTabla.getRowCount(); i++) {
                     String prod = modeloTabla.getValueAt(i, 0).toString();
                     String cant = modeloTabla.getValueAt(i, 2).toString();
@@ -462,32 +471,37 @@ public class PantallaVentas extends javax.swing.JFrame {
                     documento.add(new com.itextpdf.text.Paragraph(cant + " x " + prod + "  ->  $ " + sub));
                 }
 
-                // Pie de página y totales
+                // 4. Pie de página y totales
                 documento.add(new com.itextpdf.text.Paragraph("----------------------------------------"));
                 documento.add(new com.itextpdf.text.Paragraph("TOTAL A PAGAR:          $ " + totalTicket));
                 documento.add(new com.itextpdf.text.Paragraph("========================================"));
                 documento.add(new com.itextpdf.text.Paragraph("       ¡Gracias por su compra!          "));
                 documento.add(new com.itextpdf.text.Paragraph("========================================"));
+
+                // 5. Cerramos el "dibujo" del PDF
                 documento.close(); 
                 
+                // 6. ¡MAGIA! Le decimos a Windows que abra el PDF automáticamente
                 java.awt.Desktop.getDesktop().open(new java.io.File(nombreArchivo));
                 
             } catch (Exception e) {
                 System.out.println("Error al crear el ticket PDF: " + e.getMessage());
             }
+            // --- FIN CÓDIGO DEL TICKET EN PDF ---
 
-            // Limpiamos la pantalla para el siguiente cliente
-            modeloTabla.setRowCount(0);
-            jLabel1.setText("TOTAL: $ 0");
+            // 5. Limpiamos la pantalla para el siguiente cliente
+            modeloTabla.setRowCount(0); // Borra todas las filas de la tabla
+            jLabel1.setText("TOTAL: $ 0"); // Pone el total en cero (¡Cámbiale el número si tu total no es jLabel1!)
             
         } catch (java.sql.SQLException e) {
             javax.swing.JOptionPane.showMessageDialog(this, "Error al procesar la venta: " + e.toString());
         }
         
-        // Si el pedido venía de una mesa, la liberamos y borramos su historial temporal
+        // --- NUEVO: LIBERAR LA MESA ---
          if (botonMesaActual != null) {
              botonMesaActual.setBackground(java.awt.Color.GREEN); // La volvemos a poner Libre
 
+             // --- ✨ MAGIA: BORRAMOS LA MEMORIA DE LA BASE DE DATOS AL COBRAR ✨ ---
              try {
                  conexion.ConexionDB con2 = new conexion.ConexionDB();
                  java.sql.Connection conexion2 = con2.establecerConexion();
@@ -500,16 +514,17 @@ public class PantallaVentas extends javax.swing.JFrame {
                  System.out.println("Error al limpiar memoria de la mesa: " + exLimpiar.getMessage());
              }
 
-             this.dispose();
+             this.dispose(); // Cerramos la ventana de ventas para volver al mapa
          }
     }//GEN-LAST:event_jButton1ActionPerformed
 
     private void jButton9ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton9ActionPerformed
+        // 1. Cerramos la ventana de la factura actual
         this.dispose();
 
-        
+        // 2. ¿Veníamos de atender una mesa?
         if (this.botonMesaActual != null) {
-            // Si venimos de una mesa, traemos la pantalla de mesas al frente
+            // Si SÍ veníamos de una mesa, buscamos la Pantalla de Mesas y la traemos al frente
             for (java.awt.Window ventana : java.awt.Window.getWindows()) {
                 if (ventana instanceof PantallaMesas) {
                     ventana.setVisible(true);
@@ -518,7 +533,7 @@ public class PantallaVentas extends javax.swing.JFrame {
                 }
             }
         } else {
-            // Si venimos del menú principal, lo buscamos y lo mostramos
+            // Si NO veníamos de una mesa (entramos por otro lado), buscamos el Menú Principal
             boolean menuEncontrado = false;
             for (java.awt.Window ventana : java.awt.Window.getWindows()) {
                 if (ventana instanceof PantallaPrincipa) {
@@ -528,7 +543,7 @@ public class PantallaVentas extends javax.swing.JFrame {
                     break;
                 }
             }
-            // Si el menú estaba cerrado, creamos una nueva instancia
+            // Si por algún motivo el menú estaba cerrado, creamos uno nuevo
             if (!menuEncontrado) {
                 new PantallaPrincipa().setVisible(true);
             }
@@ -536,7 +551,7 @@ public class PantallaVentas extends javax.swing.JFrame {
     }//GEN-LAST:event_jButton9ActionPerformed
 
     private void jButton5ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton5ActionPerformed
-        // Envio de comanda a cocina y abrir ticket
+        // --- ENVIAR COMANDA A COCINA Y ABRIR TICKET ---
         try {
             javax.swing.table.DefaultTableModel modeloTabla = (javax.swing.table.DefaultTableModel) jTable1.getModel();
             if (modeloTabla.getRowCount() == 0) {
@@ -544,7 +559,7 @@ public class PantallaVentas extends javax.swing.JFrame {
                 return;
             }
 
-            // Construimos el detalle del pedido como texto plano
+            // 1. Recopilamos todo lo que pidió el cliente
             String detallePedido = "";
             for (int j = 0; j < modeloTabla.getRowCount(); j++) {
                 String cant = modeloTabla.getValueAt(j, 2).toString();
@@ -552,21 +567,24 @@ public class PantallaVentas extends javax.swing.JFrame {
                 detallePedido += cant + "x " + prod + "\n"; 
             }
 
+            // 2. Averiguamos de dónde viene el pedido
             String origenPedido = "Caja Principal"; 
             if (botonMesaActual != null) {
                 origenPedido = this.getTitle(); 
             }
 
-            // Insertamos la comanda y recuperamos el ID generado por la base de datos
+            // 3. Lo inyectamos en la base de datos de la cocina y RECUPERAMOS SU ID
             conexion.ConexionDB con = new conexion.ConexionDB();
             java.sql.Connection conexion = con.establecerConexion();
             
             String sqlComanda = "INSERT INTO comandas (mesa, detalle, estado) VALUES (?, ?, 'PENDIENTE')";
+            // ✨ Cambio aquí: Le pedimos a MySQL que nos devuelva el ID
             java.sql.PreparedStatement pstComanda = conexion.prepareStatement(sqlComanda, java.sql.Statement.RETURN_GENERATED_KEYS);
             pstComanda.setString(1, origenPedido);
             pstComanda.setString(2, detallePedido);
             pstComanda.executeUpdate();
             
+            // Sacamos el ID secreto que le asignó la base de datos
             int idGenerado = 0;
             java.sql.ResultSet rsComanda = pstComanda.getGeneratedKeys();
             if(rsComanda.next()){ idGenerado = rsComanda.getInt(1); }
@@ -574,23 +592,25 @@ public class PantallaVentas extends javax.swing.JFrame {
             pstComanda.close();
             
 
-            // Contamos cuántos tickets de cocina ya están abiertos para posicionar el nuevo
+            // 4. ---  CONSECUTIVO (1, 2, 3...) ---
             int ticketsAbiertos = 1;
             for (java.awt.Window ventana : java.awt.Window.getWindows()) {
+                // Cuenta cuántos tickets flotantes hay vivos en la pantalla
                 if (ventana instanceof PantallaComandas && ventana.isVisible()) {
                     ticketsAbiertos++;
                 }
             }
             
-            // Lanzamos la ventana de comanda con los datos del pedido
+            // 5. ¡LANZAMOS EL TICKET A LA PANTALLA DE LA COCINA!
             PantallaComandas ticket = new PantallaComandas(idGenerado, origenPedido, detallePedido, ticketsAbiertos);
             ticket.setVisible(true);
             
-            javax.swing.JOptionPane.showMessageDialog(this, "Pedido enviado a la cocina");
+            javax.swing.JOptionPane.showMessageDialog(this, "¡Pedido volando a la cocina!");
             
         } catch (Exception e) {
             System.out.println("Error al enviar comanda: " + e.getMessage());
         }
+        // --- FIN DE LA COMANDA ---
     }//GEN-LAST:event_jButton5ActionPerformed
 
     /**
@@ -618,22 +638,23 @@ public class PantallaVentas extends javax.swing.JFrame {
         java.awt.EventQueue.invokeLater(() -> new PantallaVentas().setVisible(true));
     }
     
-    // Método para cargar la memoria de la mesa
+    // --- MÉTODO PARA CARGAR LA MEMORIA DE LA MESA ---
     public void cargarPedidoMesa(String nombreMesa) {
         javax.swing.table.DefaultTableModel modeloTabla = (javax.swing.table.DefaultTableModel) jTable1.getModel();
-        modeloTabla.setRowCount(0);
+        modeloTabla.setRowCount(0); // Borramos lo visual para traer lo fresco de la base de datos
         double totalFactura = 0;
 
         try {
             conexion.ConexionDB con = new conexion.ConexionDB();
             java.sql.Connection conexion = con.establecerConexion();
             
-            // Traemos todos los productos asociados a esta mesa
+            // Buscamos solo los productos de la mesa que estamos abriendo
             String sql = "SELECT producto, precio, cantidad, subtotal FROM pedidos_temporales WHERE mesa = ?";
             java.sql.PreparedStatement pst = conexion.prepareStatement(sql);
             pst.setString(1, nombreMesa);
             java.sql.ResultSet rs = pst.executeQuery();
 
+            // Llenamos la tablita con lo que encontró
             while (rs.next()) {
                 String prod = rs.getString("producto");
                 double precio = rs.getDouble("precio");
@@ -646,6 +667,7 @@ public class PantallaVentas extends javax.swing.JFrame {
             
             jLabel1.setText("TOTAL: $ " + totalFactura);
             pst.close();
+            // Recuerda: ¡No ponemos conexion.close() para evitar el error rojo de la cocina!
             
         } catch (Exception e) {
             System.out.println("Error al cargar la memoria de la mesa: " + e.getMessage());
