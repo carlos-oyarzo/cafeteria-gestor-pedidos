@@ -248,6 +248,7 @@ public class PantallaReportes extends javax.swing.JFrame {
             conexion.close();
             
         } catch (Exception e) {
+            jLabel2.setText("Error al cargar el historial.");
             System.out.println("Error al cargar ventas por turno: " + e.getMessage());
         }
 }
