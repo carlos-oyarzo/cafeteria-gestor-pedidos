@@ -213,11 +213,12 @@ public class PantallaReportes extends javax.swing.JFrame {
 
         double totalRecaudado = 0;
 
-        try {
-            conexion.ConexionDB con = new conexion.ConexionDB();
-            java.sql.Connection conexion = con.establecerConexion();
-            java.sql.Statement st = conexion.createStatement();
-            java.sql.ResultSet rs = st.executeQuery(sql);
+        try (
+            //Hacemos uso de try con recursos, para que java cierre la conexion automáticamente.    
+            java.sql.Connection conexion = new conexion.ConexionDB().establecerConexion();
+            java.sql.Statement st       = conexion.createStatement();
+            java.sql.ResultSet rs       = st.executeQuery(sql)
+        ) {
 
             while (rs.next()) {
                 Object[] fila = new Object[5]; // Son 5 columnas visuales en la tabla
@@ -245,7 +246,6 @@ public class PantallaReportes extends javax.swing.JFrame {
             }
             
             jLabel2.setText("TOTAL RECAUDADO: $ " + totalRecaudado);
-            conexion.close();
             
         } catch (Exception e) {
             jLabel2.setText("Error al cargar el historial.");
