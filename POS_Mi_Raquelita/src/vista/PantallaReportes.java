@@ -24,7 +24,9 @@ public class PantallaReportes extends javax.swing.JFrame {
     public PantallaReportes() {
         initComponents();
         cargarHistorialVentas("Hoy");
-        //  EL VIGILANTE PARA ACTUALIZAR LA TABLA SOLITA 
+        
+        // Al recuperar el foco la ventana recarga el historial con el filtro activo,
+        // así los datos siempre están actualizados al volver desde otra pantalla.
         this.addWindowFocusListener(new java.awt.event.WindowFocusListener() {
             @Override
             public void windowGainedFocus(java.awt.event.WindowEvent e) {
@@ -35,7 +37,7 @@ public class PantallaReportes extends javax.swing.JFrame {
 
             @Override
             public void windowLostFocus(java.awt.event.WindowEvent e) {
-                // Se deja vacío
+                // No se requiere acción al perder el foco
             }
         });
     }
@@ -122,26 +124,26 @@ public class PantallaReportes extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void comboFiltroActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_comboFiltroActionPerformed
+        // Cada vez que el usuario cambia el filtro, recargamos el historial con el rango elegido
         String seleccionado = comboFiltro.getSelectedItem().toString();
         cargarHistorialVentas(seleccionado);
     }//GEN-LAST:event_comboFiltroActionPerformed
 
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
-        // 1. Cerramos la ventana en la que estamos parados actualmente
         this.dispose();
 
-        // 2. Buscamos en la memoria si el Menú Principal ya está abierto
+        // Buscamos si el menú principal ya está abierto para no crear una instancia duplicada
         boolean menuEncontrado = false;
         for (java.awt.Window ventana : java.awt.Window.getWindows()) {
             if (ventana instanceof PantallaPrincipa) {
-                ventana.setVisible(true); // Lo hacemos visible
-                ventana.toFront();        // Lo traemos al frente de la pantalla
+                ventana.setVisible(true); 
+                ventana.toFront();
                 menuEncontrado = true;
-                break; // Detenemos la búsqueda
+                break;
             }
         }
 
-        // 3. Medida de seguridad: Si por algún error no estaba abierto, creamos uno
+        // Si el menú no estaba abierto por algún motivo, lo creamos
         if (!menuEncontrado) {
             new PantallaPrincipa().setVisible(true);
         }
@@ -175,13 +177,11 @@ public class PantallaReportes extends javax.swing.JFrame {
     public void cargarHistorialVentas(String filtro) {
     javax.swing.table.DefaultTableModel modelo = (javax.swing.table.DefaultTableModel) jTable1.getModel();
         modelo.setRowCount(0); // Limpiamos la tabla
-        
-        // --- NOMBRES DE LAS COLUMNAS ---
         modelo.setColumnIdentifiers(new String[]{"Turno y Factura", "Responsable", "Productos", "Total ($)", "Fecha Exacta"});
         
         String condicionFecha = "";
 
-        // 1. Lógica de filtros
+        // Construimos el fragmento WHERE según el período seleccionado
         switch (filtro) {
             case "Hoy":
                 condicionFecha = " WHERE DATE(v.fecha) = CURDATE() ";
@@ -197,7 +197,8 @@ public class PantallaReportes extends javax.swing.JFrame {
                 break;
         }
 
-        // 2. LA SÚPER CONSULTA (Ahora sí, con las 6 columnas completas)
+        // Consulta principal: agrupa por factura y la relaciona con el turno de caja activo en ese momento.
+        // El LEFT JOIN con caja_diaria permite identificar qué cajero atendió cada venta.
         String sql = "SELECT v.id_factura, "                                                                 // Columna 1
                    + "GROUP_CONCAT(CONCAT(v.producto, ' (', v.cantidad, ')') SEPARATOR ' + ') AS lista_productos, " // Columna 2
                    + "SUM(v.subtotal) AS total_venta, "                                                      // Columna 3
@@ -231,7 +232,7 @@ public class PantallaReportes extends javax.swing.JFrame {
                     fila[0] = "Turno " + turno + " - Fac #" + factura;
                 }
                 
-                // Columna 1: Responsable (Buscamos la columna 6 de SQL por su nombre exacto)
+                // Si no hay turno asociado, marcamos la venta como prueba para distinguirla fácilmente
                 fila[1] = rs.getString("nombre_cajero"); 
                 
                 // Las demás columnas...
