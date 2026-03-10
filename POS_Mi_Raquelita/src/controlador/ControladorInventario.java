@@ -1,70 +1,74 @@
 package controlador;
 
-// --- NUEVAS HERRAMIENTAS PARA LA BASE DE DATOS ---
+// Imporación clases de SQL y de conexion con DDBB
 import conexion.ConexionDB;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
-// Importamos nuestra clase Producto para poder usarla aquí
+// Importación clase producto
 import modelo.Producto;
-// Importamos la herramienta ArrayList de Java (nuestro "cajón" de memoria)
+// Importación clase ArrayList
 import java.util.ArrayList;
 
 public class ControladorInventario {
     
-    // 1. EL CAJÓN: Creamos una lista dinámica que solo guardará "Productos"
+    // Creamos una lista dinámica para productos
     private static final ArrayList<Producto> listaProductos = new ArrayList<>();
 
-    // 2. EL CONSTRUCTOR: Esto se ejecuta apenas abres la ventana del inventario
+    // Constructor vacio? para la pantalla inventario?
     public ControladorInventario() {
                 
     }
 
-    // 3. ACCIÓN 1: Agregar un producto (AHORA DIRECTO A LA BASE DE DATOS)
+    // Agregar producto a la DDBB
     public void agregarProducto(Producto nuevoProducto) {
-        // 1. Usamos tu llave maestra para abrir la puerta de XAMPP
+        
+         // Se establece conexion a DDBB con XAMPP
         ConexionDB con = new ConexionDB();
         Connection conexionApertura = con.establecerConexion();
         
-        // 2. Preparamos la instrucción SQL (Fíjate que no mandamos el ID porque XAMPP lo crea automático)
+        // Prepara la query SQL
         String sql = "INSERT INTO productos (nombre, categoria, precio, cantidad) VALUES (?, ?, ?, ?)";
         
         try {
-            // 3. Empacamos los datos en la instrucción
+            // Datos empacados para la query
             PreparedStatement pst = conexionApertura.prepareStatement(sql);
             pst.setString(1, nuevoProducto.getNombre());
             pst.setString(2, nuevoProducto.getCategoria());
             pst.setDouble(3, nuevoProducto.getPrecio());
             pst.setInt(4, nuevoProducto.getCantidad());
             
-            // 4. ¡Disparamos la instrucción hacia MySQL!
+            // Envio de la query
             pst.executeUpdate();
             System.out.println("¡Éxito! Producto guardado en la Base de Datos de Mi Raquelita.");
             
-            // --- CERRANDO LAS PUERTAS ---
+            // Cierre de conexión con DDBB
             pst.close();
             conexionApertura.close();
             
         } catch (SQLException e) {
-            // Si algo sale mal, el escudo lo atrapa
+            // Captura de errores
             System.out.println("Error al guardar en la Base de Datos: " + e.toString());
         }
     }
 
-    // 4. ACCIÓN 2: La orden para pedirle al programa que nos muestre todo lo guardado
+    // Método para obtener productos de lista
     public ArrayList<Producto> obtenerTodosLosProductos() {
-        ArrayList<Producto> listaLocal = new ArrayList<>(); // Un cajón temporal
+        
+        ArrayList<Producto> listaLocal = new ArrayList<>();
         ConexionDB con = new ConexionDB();
         Connection conexion = con.establecerConexion();
-        String sql = "SELECT * FROM productos"; // "Seleccionar todo de la tabla productos"
+        String sql = "SELECT * FROM productos";
 
         try {
+            
             PreparedStatement pst = conexion.prepareStatement(sql);
             java.sql.ResultSet rs = pst.executeQuery(); // Ejecutamos la consulta
 
             while (rs.next()) {
-                // Sacamos los datos de la fila de la base de datos
+                
+                // Sacamos los datos de la fila de la DDBB
                 Producto p = new Producto(
                     rs.getInt("id"),
                     rs.getString("nombre"),
@@ -72,10 +76,11 @@ public class ControladorInventario {
                     rs.getDouble("precio"),
                     rs.getInt("cantidad")
                 );
-                listaLocal.add(p); // Los metemos al cajón temporal
+                // Guardamos en lista de memoria (temporal)
+                listaLocal.add(p);
             }
             
-            // --- CERRANDO LAS PUERTAS ---
+            // Cierre de conexión con DDBB
             rs.close();
             pst.close();
             conexion.close();
@@ -83,15 +88,16 @@ public class ControladorInventario {
         } catch (SQLException e) {
             System.out.println("Error al traer los datos: " + e.toString());
         }
-        return listaLocal; // Le entregamos la lista llena a la tabla
+        // Le entregamos la lista llena a la tabla
+        return listaLocal;
     }
     
     
-    // 5. ACCIÓN 3: Modificar un producto existente
+    // Modificar un producto existente
     public void modificarProducto(int idBuscado, String nuevoNombre, String nuevaCategoria, double nuevoPrecio, int nuevaCantidad) {
         ConexionDB con = new ConexionDB();
         Connection conexion = con.establecerConexion();
-        // Le decimos a XAMPP: "Actualiza el producto donde el ID sea el que yo te diga"
+        // Se actualiza en DDBB el producto segun ID correspondiente
         String sql = "UPDATE productos SET nombre=?, categoria=?, precio=?, cantidad=? WHERE id=?";
 
         try {
@@ -105,7 +111,7 @@ public class ControladorInventario {
             pst.executeUpdate();
             System.out.println("¡Éxito! Producto actualizado en la Base de Datos.");
             
-            // --- CERRANDO LAS PUERTAS ---
+            // Cierre de conexión con DDBB
             pst.close();
             conexion.close();
             
@@ -114,19 +120,20 @@ public class ControladorInventario {
         }
     }
     
-    // 6. ACCIÓN 4: Eliminar un producto de la memoria
+    // Eliminar un producto de la memoria
     public void eliminarProducto(int idBuscado) {
        ConexionDB con = new ConexionDB();
         Connection conexion = con.establecerConexion();
-        String sql = "DELETE FROM productos WHERE id=?"; // "Borra el producto con este ID"
+        String sql = "DELETE FROM productos WHERE id=?";
 
         try {
+            
             PreparedStatement pst = conexion.prepareStatement(sql);
             pst.setInt(1, idBuscado);
             pst.executeUpdate();
             System.out.println("¡Éxito! Producto borrado de la Base de Datos.");
             
-            // --- CERRANDO LAS PUERTAS ---
+            // Cierre de conexión con DDBB
             pst.close();
             conexion.close();
             
