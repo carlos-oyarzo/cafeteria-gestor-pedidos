@@ -7,35 +7,32 @@ import javax.swing.JOptionPane;
 
 public class ConexionDB {
     
-    // 1. LAS CREDENCIALES: La dirección y las llaves de XAMPP
+    // Dirección, puerto y nombre de DDBB para la conexion de la base de datos
     String ip = "localhost"; // Tu propia PC
     String puerto = "3306"; // Este es el puerto por defecto de MySQL
     String baseDatos = "pos_raquelita"; // El nombre exacto que le pusimos en phpMyAdmin
     
-    // La URL final que une todo lo anterior
+    // La URL de la base de datos
     String cadenaConexion = "jdbc:mysql://" + ip + ":" + puerto + "/" + baseDatos;
     
-    // El usuario por defecto de XAMPP siempre es "root" y la contraseña viene vacía ""
+    // Credenciales de XAMPP
     String usuario = "root";
     String contrasena = ""; 
     
-    // 2. LA VARIABLE DE CONEXIÓN
+    // Variable de la conexion
     Connection conectar = null;
 
-    // 3. EL MÉTODO PARA ABRIR LA PUERTA
+    // Método para abrir la conexion
     public Connection establecerConexion() {
         try {
-            // Le decimos a Java que use el traductor (Driver) que descargaste
+            // Configuramos el controlador de la conexion
             Class.forName("com.mysql.cj.jdbc.Driver");
             
-            // Intentamos iniciar sesión en MySQL
+            // Iniciar sesión en MySQL
             conectar = DriverManager.getConnection(cadenaConexion, usuario, contrasena);
             
-            // Mensaje de éxito temporal para comprobar que funciona (luego lo borramos)
-            //JOptionPane.showMessageDialog(null, "¡Éxito! Conectados a la Base de Datos de Mi Raquelita");
-            
         } catch (ClassNotFoundException | SQLException e) {
-            // Si algo sale mal (XAMPP apagado, mal la contraseña, etc.), el escudo atrapa el error
+            // Captura de error
             JOptionPane.showMessageDialog(null, "Error al conectar a la base de datos: " + e.toString());
         }
         return conectar;
